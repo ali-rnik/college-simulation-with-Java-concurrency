@@ -1,63 +1,56 @@
 import java.util.Vector;
 
-public class Visitor implements Runnable {
+public class Visitor extends Extras implements Runnable {
     public String name;
-    public boolean isInClassroom;
     public Vector<Classroom> classroomList;
 
     public Visitor(String name, Vector<Classroom> classroomList) {
         this.name = name;
         this.classroomList = classroomList;
-        this.isInClassroom = false;
     }
 
-    public boolean tryEnterClass(Classroom cr) {
-        if (cr.visitorGateCheckin()) {
-            isInClassroom = true;
-            return true;
-        }
-        return false;
-    }
-
-    public boolean tryLeaveClass(Classroom cr) {
-        if(isInClassroom) {
-            if (cr.visitorGateCheckout()) {
-                isInClassroom = false;
-                return true;
+    public synchronized boolean enter(Classroom cr) {
+        if (cr.semCap.get("lecturer").availablePermits() == 1) {
+            if (cr.semCap.get("visitors").tryAcquire()) {
+                custom_print("Visitor "+this.name+" Entered "+cr.name+" Classroom!");
+            } else {
+                custom_print("Visitor "+this.name+" Could not Entered "+cr.name+" Classroom. Because classroom is full");
+                return false;
             }
+        } else {
+            custom_print("Visitor "+this.name+" Could not Entered "+cr.name+" Classroom. because Session started.");
+            return false;
         }
-        return false;
+        
+        return true;
     }
-
-       public void run() {
+    
+    public synchronized void leave(Classroom cr) {
+        while(cr.semCap.get("lecturer").availablePermits() == 0) {
+            simudelay(Simukind.BE_PATIENCE);
+            custom_print("Visitor "+this.name+" Could not leave "+cr.name+" Classroom. because Session started.");
+        } 
+        custom_print("Visitor "+this.name+" Left "+cr.name+" Classroom!");                
+        cr.semCap.get("visitors").release();
+    }
+    
+    public void run() {
         while (true) {
             Classroom cr = classroomList.get((int)(Math.random()*(classroomList.size()-1)));
-            try {
-                restFor((int)(Math.random()*4));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            
+            // Delay in Finding class
+            simudelay(Simukind.COLLEGEWALK);
+            
+            // Try To Enter
+            if (enter(cr)) {
+                // Try to be a good student and listen to lecturer
+                simudelay(Simukind.INLECTURE);
+                
+                // Leave the class with respect.
+                leave(cr);
             }
-            if(!this.tryEnterClass(cr)) {
-                System.out.println("Student "+this.name+" Could Not enter "+cr.name+" Classroom!");
-                try {
-                    restFor((int)(Math.random()*4));
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                continue;
-            }
-            System.out.println("Student "+this.name+" Entered "+cr.name+" Classroom!");
-
-            try {
-                restFor((int)(Math.random()*4));
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            if(!this.tryLeaveClass(cr)) {
-                System.out.println("Logical Error!");
-                System.exit(-1);
-            }
-            System.out.println("Student "+this.name+" Left "+cr.name+" Classroom!");
+            
+            simudelay(Simukind.REST);    
         }
     }
 }
