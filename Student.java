@@ -1,6 +1,4 @@
-import java.util.Random;
 import java.util.Vector;
-import java.util.concurrent.TimeUnit;
 
 public class Student extends Extras implements Runnable {
     public String name;
